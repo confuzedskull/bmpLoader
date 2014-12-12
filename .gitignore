@@ -26,3 +26,16 @@
 *.exe
 *.out
 *.app
+
+# Mac stuff
+._.DS_Store
+._main.cpp
+.DS_Store
+
+# Codeblocks Stuff
+*.cbp
+*.depend
+*.layout
+
+# Project stuff
+archive/
