@@ -13,11 +13,34 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <cstdint>
 
-GLuint load_bmp(std::string filename, int width, int height)
+//this function checks endianness
+bool is_big_endian()
+{
+    int i=1;
+    return !((char*)&i)[0];
+}
+
+//this function retrieves the appropriate value according to endianness
+int32_t to_int32(char* buffer, int length)
+{
+    int32_t i=0;
+    if(!is_big_endian())
+        for(int j=0;j<length;j++)
+            ((char*)&i)[j]=buffer[j];
+    else
+        for(int j=0;j<length;j++)
+            ((char*)&i)[sizeof(int)-1-j]=buffer[j];
+    return i;
+}
+
+GLuint load_bmp(std::string filename)
 {
     GLuint texture;
     char* data;
+    char file_info[4];
+    int32_t width, height;
     std::ifstream image_file;
     image_file.open(filename.c_str(), std::ios::binary);
     if(image_file.bad())
@@ -25,6 +48,16 @@ GLuint load_bmp(std::string filename, int width, int height)
         std::cerr<<"error loading file.\n";
         return 0;
     }
+    image_file.read(file_info,2);//signature
+    image_file.read(file_info,4);//file size
+    image_file.read(file_info,2);//reserved
+    image_file.read(file_info,2);//reserved
+    image_file.read(file_info,4);//offset
+    image_file.read(file_info,4);//size of header
+    image_file.read(file_info,4);//width
+    width = to_int32(file_info,4);
+    image_file.read(file_info,4);//height
+    height = to_int32(file_info,4);
     data = new char[width*height*3];
     image_file.read(data, width*height*3);
     image_file.close();
@@ -45,7 +78,7 @@ GLuint load_bmp(std::string filename, int width, int height)
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
     gluBuild2DMipmaps(GL_TEXTURE_2D, 3, width, height, GL_RGB, GL_UNSIGNED_BYTE, data);
-    free(data);
+    delete[] data;
     return texture;
 }
 static GLuint texture;
@@ -71,7 +104,7 @@ void initialize()
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     gluOrtho2D(0, 640, 0, 480);
-    texture = load_bmp("confuzedskull.bmp", 256, 256);
+    texture = load_bmp("confuzedskull.bmp");
 }
 
 void change_size(int w, int h)
