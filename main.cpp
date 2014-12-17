@@ -15,6 +15,11 @@
 #include <string>
 #include <cstdint>
 
+//global variables
+GLuint texture;
+int32_t image_width, image_height;
+std::ifstream image_file;
+
 //this function checks endianness
 bool is_big_endian()
 {
@@ -35,18 +40,15 @@ int32_t to_int32(char* buffer, int length)
     return i;
 }
 
-GLuint load_bmp(std::string filename)
+void load(std::string filename)
 {
-    GLuint texture;
     char* data;
     char file_info[4];
-    int32_t width, height;
-    std::ifstream image_file;
     image_file.open(filename.c_str(), std::ios::binary);
     if(image_file.bad())
     {
         std::cerr<<"error loading file.\n";
-        return 0;
+        return;
     }
     image_file.read(file_info,2);//signature
     image_file.read(file_info,4);//file size
@@ -55,13 +57,13 @@ GLuint load_bmp(std::string filename)
     image_file.read(file_info,4);//offset
     image_file.read(file_info,4);//size of header
     image_file.read(file_info,4);//width
-    width = to_int32(file_info,4);
+    image_width = to_int32(file_info,4);
     image_file.read(file_info,4);//height
-    height = to_int32(file_info,4);
-    data = new char[width*height*3];
-    image_file.read(data, width*height*3);
+    image_height = to_int32(file_info,4);
+    data = new char[image_width*image_height*3];
+    image_file.read(data, image_width*image_height*3);
     image_file.close();
-    for(int i=0; i<width*height; ++i)
+    for(int i=0; i<image_width*image_height; ++i)
     {
         int index = i*3;
         unsigned char B,R;
@@ -77,11 +79,9 @@ GLuint load_bmp(std::string filename)
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-    gluBuild2DMipmaps(GL_TEXTURE_2D, 3, width, height, GL_RGB, GL_UNSIGNED_BYTE, data);
+    gluBuild2DMipmaps(GL_TEXTURE_2D, 3, image_width, image_height, GL_RGB, GL_UNSIGNED_BYTE, data);
     delete[] data;
-    return texture;
 }
-static GLuint texture;
 
 void render()
 {
@@ -89,10 +89,10 @@ void render()
     glBindTexture(GL_TEXTURE_2D, texture);
     glEnable(GL_TEXTURE_2D);
     glBegin(GL_QUADS);
-    glTexCoord2i(0, 0); glVertex2f(0.0, 0.0);
-    glTexCoord2i(0, 1); glVertex2f(0.0, 64.0);
-    glTexCoord2i(1, 1); glVertex2f(64.0, 64.0);
-    glTexCoord2i(1, 0); glVertex2f(64.0, 0.0);
+    glTexCoord2i(0, 0); glVertex2i(0, 0);
+    glTexCoord2i(0, 1); glVertex2i(0, image_height);
+    glTexCoord2i(1, 1); glVertex2i(image_width, image_height);
+    glTexCoord2i(1, 0); glVertex2i(image_width, 0);
     glEnd();
     glDisable(GL_TEXTURE_2D);
     glFlush();
@@ -100,17 +100,13 @@ void render()
 
 void initialize()
 {
-    glClearColor(0.0, 0.0, 0.0, 0.0);
+    glClearColor(1.0, 1.0, 1.0, 0.0);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     gluOrtho2D(0, 640, 0, 480);
-    texture = load_bmp("confuzedskull.bmp");
 }
 
-void change_size(int w, int h)
-{
-    glViewport(0, 0, (GLsizei) w, (GLsizei) h);
-}
+void change_size(int w, int h){}
 
 void key_pressed(unsigned char key, int x, int y)
 {
@@ -120,11 +116,34 @@ void key_pressed(unsigned char key, int x, int y)
 
 int main(int argc, char *argv[])
 {
+    std::string filename;
+    if(argc==2)
+        load(argv[1]);
+    else
+    {
+        std::cerr<<"No bitmap file loaded. ";
+        while(true)
+        {
+            std::cerr<<"Please supply filename or type 'quit'.\n";
+            std::cin>>filename;
+            if(filename=="quit")
+                return 1;
+            image_file.open(filename.c_str());
+            if(image_file.good())
+            {
+                image_file.close();
+                break;
+            }
+            else
+                std::cerr<<filename<<" does not exist. \n";
+        }
+    }
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
     glutInitWindowSize(640, 480);
     glutCreateWindow("bmpLoader");
     initialize();
+    load(filename);
     glutDisplayFunc(render);
     glutReshapeFunc(change_size);
     glutKeyboardFunc(key_pressed);
