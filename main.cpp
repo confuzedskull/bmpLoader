@@ -10,20 +10,24 @@
 #include <GL/glu.h>
 #include <GL/glut.h>
 #endif
-#include <stdlib.h>
-#include <stdio.h>
+#include <iostream>
+#include <fstream>
+#include <string>
 
-GLuint load_bmp(const char*filename, int width, int height)
+GLuint load_bmp(std::string filename, int width, int height)
 {
     GLuint texture;
-    unsigned char* data;
-    FILE* file;
-    file = fopen(filename, "rb");
-    if(file == NULL)
+    char* data;
+    std::ifstream image_file;
+    image_file.open(filename.c_str(), std::ios::binary);
+    if(image_file.bad())
+    {
+        std::cerr<<"error loading file.\n";
         return 0;
-    data = (unsigned char*) malloc(width*height*3);
-    fread(data, width*height*3, 1, file);
-    fclose(file);
+    }
+    data = new char[width*height*3];
+    image_file.read(data, width*height*3);
+    image_file.close();
     for(int i=0; i<width*height; ++i)
     {
         int index = i*3;
@@ -61,7 +65,7 @@ void render()
     glFlush();
 }
 
-void init()
+void initialize()
 {
     glClearColor(0.0, 0.0, 0.0, 0.0);
     glMatrixMode(GL_PROJECTION);
@@ -70,12 +74,12 @@ void init()
     texture = load_bmp("confuzedskull.bmp", 256, 256);
 }
 
-void resize(int w, int h)
+void change_size(int w, int h)
 {
     glViewport(0, 0, (GLsizei) w, (GLsizei) h);
 }
 
-void key(unsigned char key, int x, int y)
+void key_pressed(unsigned char key, int x, int y)
 {
     if(key == 27)
         exit(0);
@@ -87,10 +91,10 @@ int main(int argc, char *argv[])
     glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
     glutInitWindowSize(640, 480);
     glutCreateWindow("bmpLoader");
-    init();
+    initialize();
     glutDisplayFunc(render);
-    glutReshapeFunc(resize);
-    glutKeyboardFunc(key);
+    glutReshapeFunc(change_size);
+    glutKeyboardFunc(key_pressed);
     glutMainLoop();
     return 0;
 }
