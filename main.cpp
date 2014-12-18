@@ -50,20 +50,18 @@ void load(std::string filename)
         std::cerr<<"error loading file.\n";
         return;
     }
-    image_file.read(file_info,2);//signature
-    image_file.read(file_info,4);//file size
-    image_file.read(file_info,2);//reserved
-    image_file.read(file_info,2);//reserved
-    image_file.read(file_info,4);//offset
-    image_file.read(file_info,4);//size of header
+    image_file.seekg(18,image_file.cur);//skip beginning of header
     image_file.read(file_info,4);//width
-    image_width = to_int32(file_info,4);
+    image_width = to_int32(file_info,4);//convert raw data to integer
     image_file.read(file_info,4);//height
-    image_height = to_int32(file_info,4);
-    data = new char[image_width*image_height*3];
-    image_file.read(data, image_width*image_height*3);
+    image_height = to_int32(file_info,4);//convert raw data to integer
+    image_file.seekg(28,image_file.cur);//skip rest of header
+    int image_area = image_width*image_height;//calculate area now since it'll be used 3 times
+    data = new char[image_area*3];//set the buffer size
+    image_file.read(data, image_area*3);//get the pixel matrix
     image_file.close();
-    for(int i=0; i<image_width*image_height; ++i)
+    //next we need to rearrange the color values from BGR to RGB
+    for(int i=0; i<image_area; ++i)//iterate through each cell of the matrix
     {
         int index = i*3;
         unsigned char B,R;
